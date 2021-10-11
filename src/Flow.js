@@ -492,30 +492,6 @@ export default class Flow extends Eventizer {
   }
 
   /**
-   * A generator to yield files and factor the sync part of the filtering logic used in addFiles
-   */
-  *filterFileList(fileList, event) {
-    // ie10+
-    var ie10plus = window.navigator.msPointerEnabled;
-
-    for (let file of fileList) {
-      // https://github.com/flowjs/flow.js/issues/55
-      if ((ie10plus && file.size === 0) || (file.size % 4096 === 0 && (file.name === '.' || file.fileName === '.'))) {
-        // console.log(`file ${file.name} empty. skipping`);
-        continue;
-      }
-
-      var uniqueIdentifier = this.generateUniqueIdentifier(file);
-      if (!this.opts.allowDuplicateUploads && this.getFromUniqueIdentifier(uniqueIdentifier)) {
-        // console.log(`file ${file.name} non-unique. skipping`);
-        continue;
-      }
-
-      yield [file, uniqueIdentifier];
-    }
-  }
-
-  /**
    * Add a HTML5 File object to the list of files.
    * @function
    * @param {File} file
@@ -536,11 +512,23 @@ export default class Flow extends Eventizer {
    * @return Promise{[<FlowFile>,...]} The promise of getting an array of FlowFile.
    */
   async addFiles(fileList, event = null, initFileFn = this.opts.initFileFn) {
-    let item, file, uniqueIdentifier, flowFiles = [];
-    const iterator = this.filterFileList(fileList, event);
+    let flowFiles = [];
 
-    while ((item = iterator.next()) && !item.done) {
-      [file, uniqueIdentifier] = item.value;
+    const ie10plus = window.navigator.msPointerEnabled;
+
+    for (let file of fileList) {
+      // https://github.com/flowjs/flow.js/issues/55
+      if ((ie10plus && file.size === 0) || (file.size % 4096 === 0 && (file.name === '.' || file.fileName === '.'))) {
+        // console.log(`file ${file.name} empty. skipping`);
+        continue;
+      }
+
+      let uniqueIdentifier = this.generateUniqueIdentifier(file);
+      if (!this.opts.allowDuplicateUploads && this.getFromUniqueIdentifier(uniqueIdentifier)) {
+        // console.log(`file ${file.name} non-unique. skipping`);
+        continue;
+      }
+
       if (! await this.hook('filter-file', file, event)) {
         // console.log(`file ${file.name} filtered-out. skipping`);
         continue;
